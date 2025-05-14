@@ -68,7 +68,20 @@ contract DscEngine is ReentrancyGuard {
         i_dsc = DecentralizedStableCoin(dscAddress);
     }
 
-    function depositCollateralAndMintDsc() external {}
+    /**
+     * @notice this function is used to deposit collateral and mint decentralized stablecoin
+     * @param tokenCollateralAddress The address of the token to deposit as collateral
+     * @param amountCollateral The amount of collateral to deposit
+     * @param amountDscToMint The amount of decentralized stablecoin to mint
+     */
+    function depositCollateralAndMintDsc(
+        address tokenCollateralAddress,
+        uint256 amountCollateral,
+        uint256 amountDscToMint
+    ) external {
+        depositCollateral(tokenCollateralAddress, amountCollateral);
+        mintDsc(amountDscToMint);
+    }
 
     function redeemCollateralForDsc() external {}
 
@@ -78,7 +91,7 @@ contract DscEngine is ReentrancyGuard {
      * @param amountCollateral The amount of collateral to deposit
      */
     function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral)
-        external
+        public
         moreThanZero(amountCollateral)
         isAllowedToken(tokenCollateralAddress)
         nonReentrant
@@ -92,14 +105,12 @@ contract DscEngine is ReentrancyGuard {
         }
     }
 
-    function redeemCollateral() external {}
-
     /**
      * @notice follow CEI
      * @param amountDscToMint The amount of decentralized stablecoin to mint
      * @notice they must have more collateral value than the minimum threshold
      */
-    function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
+    function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) nonReentrant {
         s_dscMinted[msg.sender] += amountDscToMint;
         emit DscMinted(msg.sender, amountDscToMint);
 
@@ -110,6 +121,8 @@ contract DscEngine is ReentrancyGuard {
             revert DscEngine__MintFailed();
         }
     }
+
+    function redeemCollateral() external {}
 
     function burnDsc() external {}
 
