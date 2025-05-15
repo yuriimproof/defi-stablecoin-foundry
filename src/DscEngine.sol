@@ -157,7 +157,7 @@ contract DscEngine is ReentrancyGuard {
      * @notice this function is used to burn decentralized stablecoin
      * @param amountDscToBurn The amount of decentralized stablecoin to burn
      */
-    function burnDsc(uint256 amountDscToBurn) public moreThanZero(amountDscToBurn) {
+    function burnDsc(uint256 amountDscToBurn) public moreThanZero(amountDscToBurn) nonReentrant {
         _burnDsc(amountDscToBurn, msg.sender, msg.sender);
         _revertIfHealthFactorIsBroken(msg.sender);
     }
@@ -223,6 +223,14 @@ contract DscEngine is ReentrancyGuard {
         return (uint256(price) * ADDITIONAL_FEED_PRECISION * amount) / PRECISION;
     }
 
+    function getCollateralBalanceOfUser(address user, address token) public view returns (uint256) {
+        return s_collateralDeposited[user][token];
+    }
+
+    function getDscMinted(address user) public view returns (uint256) {
+        return s_dscMinted[user];
+    }
+
     function _redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral, address from, address to)
         private
     {
@@ -258,6 +266,11 @@ contract DscEngine is ReentrancyGuard {
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
         // return (collateralValueInUsd / totalDscMinted); // (150/100) = 1.5 wrong solidity don't work with floats
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+
+        if (totalDscMinted == 0) {
+            return type(uint256).max;
+        }
+
         return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 
