@@ -8,6 +8,7 @@ import {DscEngine} from "../../src/DscEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "../mocks/MockERC20.sol";
+import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
 
 contract DscEngineTest is Test {
     DeployDsc deployer;
@@ -26,9 +27,9 @@ contract DscEngineTest is Test {
 
     address public USER = makeAddr("USER");
     address public LIQUIDATOR = makeAddr("LIQUIDATOR");
-    uint256 public constant AMOUNT_COLLATERAL = 10 ether;
-    uint256 public constant STARTING_ERC20_BALANCE = 10 ether;
-    uint256 public constant AMOUNT_TO_MINT_DSC = 100 ether;
+    uint256 public constant AMOUNT_COLLATERAL = 10 ether; // 10 eth
+    uint256 public constant STARTING_ERC20_BALANCE = 10 ether; // 10 eth
+    uint256 public constant AMOUNT_TO_MINT_DSC = 100 ether; // 100 usd
 
     function setUp() public {
         deployer = new DeployDsc();
@@ -85,6 +86,12 @@ contract DscEngineTest is Test {
         dscEngine.depositCollateral(weth, AMOUNT_COLLATERAL);
         vm.stopPrank();
         _;
+    }
+
+    function test_getAccountCollateralValue() public depositedCollateral {
+        uint256 expectedCollateralValue = AMOUNT_COLLATERAL * 2000;
+        uint256 actualCollateralValue = dscEngine.getAccountCollateralValue(USER);
+        assertEq(expectedCollateralValue, actualCollateralValue);
     }
 
     modifier depositedCollateralAndMintedDsc() {
@@ -165,7 +172,7 @@ contract DscEngineTest is Test {
 
     function test_BurnDsc() public depositedCollateralAndMintedDsc {
         vm.startPrank(USER);
-        DecentralizedStableCoin(address(dsc)).approve(address(dscEngine), AMOUNT_TO_MINT_DSC);
+        dsc.approve(address(dscEngine), AMOUNT_TO_MINT_DSC);
         dscEngine.burnDsc(AMOUNT_TO_MINT_DSC);
         vm.stopPrank();
 
@@ -190,5 +197,39 @@ contract DscEngineTest is Test {
         vm.expectRevert(DscEngine.DscEngine__NeedsMoreThanZero.selector);
         dscEngine.liquidate(weth, USER, 0);
         vm.stopPrank();
+    }
+
+    function test_RevertIfHealthFactorOk() public depositedCollateralAndMintedDsc {
+        vm.startPrank(LIQUIDATOR);
+        vm.expectRevert(DscEngine.DscEngine__HealthFactorIsOk.selector);
+        dscEngine.liquidate(weth, USER, AMOUNT_TO_MINT_DSC);
+        vm.stopPrank();
+    }
+
+    function test_Liquidate() public {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dscEngine), AMOUNT_COLLATERAL - 9 ether);
+        // i deposit 2000 usd to collateral, so i can mint 1000 usd of dsc
+        dscEngine.depositCollateralAndMintDsc(weth, AMOUNT_COLLATERAL - 9 ether, AMOUNT_TO_MINT_DSC * 10);
+        vm.stopPrank();
+
+        vm.startPrank(LIQUIDATOR);
+        // Deposit collateral and mint DSC
+        ERC20Mock(weth).approve(address(dscEngine), AMOUNT_COLLATERAL);
+        dscEngine.depositCollateralAndMintDsc(weth, AMOUNT_COLLATERAL, AMOUNT_TO_MINT_DSC * 10);
+
+        // Make the user undercollateralized by setting ETH price to $1900
+        MockV3Aggregator(ethUsdPriceFeed).updateAnswer(1900e8);
+
+        // Liquidate the user
+        dsc.approve(address(dscEngine), AMOUNT_TO_MINT_DSC * 10);
+        dscEngine.liquidate(weth, USER, AMOUNT_TO_MINT_DSC * 10);
+        vm.stopPrank();
+
+        assertEq(dscEngine.getDscMinted(USER), 0);
+
+        // With ETH at $1900, liquidating 1000 DSC requires 1000/1900 = 0.5263 ETH
+        // Plus 10% bonus = 0.5263 * 1.1 = 0.5789 ETH (578947368421052631 wei)
+        assertEq(ERC20Mock(weth).balanceOf(LIQUIDATOR), 578947368421052631);
     }
 }

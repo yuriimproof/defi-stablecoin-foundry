@@ -1,66 +1,133 @@
-## Foundry
+# DeFi Stablecoin Foundry
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A decentralized stablecoin system built with Solidity and Foundry, featuring algorithmic stability and exogenous collateral (ETH & BTC).
 
-Foundry consists of:
+## Overview
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+This project implements a decentralized stablecoin system similar to DAI, but with a simpler design focused on algorithmic stability and exogenous collateral. The system maintains a 1:1 peg with USD and is backed by WETH and WBTC.
 
-## Documentation
+### Key Features
 
-https://book.getfoundry.sh/
+- **Exogenous Collateral**: Backed by WETH and WBTC
+- **Dollar Pegged**: Maintains 1:1 parity with USD
+- **Algorithmic Stability**: Uses a collateralization ratio to maintain stability
+- **Liquidation Mechanism**: Includes a 10% bonus for liquidators
+- **Health Factor**: Ensures system solvency through collateralization checks
 
-## Usage
+## Technical Details
 
-### Build
+### Core Components
 
-```shell
-$ forge build
+1. **DecentralizedStableCoin (DSC)**
+   - ERC20 token implementation
+   - Burnable and Ownable
+   - Maintains 1:1 USD peg
+
+2. **DscEngine**
+   - Core contract handling all system logic
+   - Manages collateral deposits and withdrawals
+   - Handles DSC minting and burning
+   - Implements liquidation mechanism
+   - Uses Chainlink price feeds for collateral valuation
+
+### Key Parameters
+
+- **Liquidation Threshold**: 50% (200% overcollateralized)
+- **Liquidation Bonus**: 10%
+- **Minimum Health Factor**: 1e18
+- **Precision**: 1e18
+
+## Getting Started
+
+### Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
+- [Node.js](https://nodejs.org/) (for development tools)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/defi-stablecoin-foundry.git
+cd defi-stablecoin-foundry
 ```
 
-### Test
-
-```shell
-$ forge test
+2. Install dependencies:
+```bash
+forge install
 ```
 
-### Format
+### Testing
 
-```shell
-$ forge fmt
+Run the test suite:
+```bash
+forge test
 ```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
+For detailed test output:
+```bash
+forge test -vv
 ```
 
-### Anvil
+## Contract Architecture
 
-```shell
-$ anvil
-```
+### Main Contracts
 
-### Deploy
+1. **DecentralizedStableCoin.sol**
+   - ERC20 implementation
+   - Minting and burning functionality
+   - Access control through Ownable
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+2. **DscEngine.sol**
+   - Collateral management
+   - DSC minting/burning
+   - Liquidation mechanism
+   - Health factor calculations
+   - Price feed integration
 
-### Cast
+### Key Functions
 
-```shell
-$ cast <subcommand>
-```
+- `depositCollateral`: Deposit collateral tokens
+- `mintDsc`: Mint new DSC tokens
+- `redeemCollateral`: Withdraw collateral
+- `burnDsc`: Burn DSC tokens
+- `liquidate`: Liquidate undercollateralized positions
 
-### Help
+## Security Features
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- ReentrancyGuard implementation
+- Health factor checks
+- Collateralization ratio monitoring
+- Price feed staleness checks
+- Access control mechanisms
+
+## Development
+
+### Testing Strategy
+
+The project includes:
+- Unit tests
+- Integration tests
+- Fuzz tests
+- Invariant tests
+
+### Best Practices
+
+- Follows CEI (Checks-Effects-Interactions) pattern
+- Implements comprehensive error handling
+- Uses events for important state changes
+- Includes detailed NatSpec documentation
+
+## License
+
+MIT License
+
+## Author
+
+Yuri Improof
+
+## Acknowledgments
+
+- Inspired by MakerDAO's DAI system
+- Uses OpenZeppelin contracts
+- Integrates with Chainlink price feeds
